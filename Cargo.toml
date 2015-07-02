@@ -3,6 +3,17 @@ name = "rusty_trap"
 version = "0.1.0"
 authors = ["Joseph Kain <joekain@gmail.com>"]
 
+[dependencies]
+libc     = "0.1.8"
+
 [dependencies.nix]
 path = "/home/joseph/src/rust/nix-rust/"
 version = "0.3.7"
+
+[lib]
+name = "rusty_trap"
+path = "src/lib.rs"
+
+[[bin]]
+name = "twelve"
+path = "tests/inferiors/twelve.rs"
