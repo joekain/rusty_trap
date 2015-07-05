@@ -7,8 +7,9 @@ authors = ["Joseph Kain <joekain@gmail.com>"]
 libc     = "0.1.8"
 
 [dependencies.nix]
-path = "/home/joseph/src/rust/nix-rust/"
-version = "0.3.7"
+git = "https://github.com/joekain/nix-rust.git"
+version = "0.3.8"
+branch = "WaitStatus"
 
 [lib]
 name = "rusty_trap"
