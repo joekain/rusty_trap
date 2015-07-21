@@ -29,6 +29,23 @@ mod ffi {
     }
 }
 
+fn ptrace_util_get_instruction_pointer(pid: pid_t pid) -> usize
+{
+  uintptr_t offset = offsetof(struct user, regs.rip);
+  return ptrace(PTRACE_PEEKUSER, pid, offset, ptr::null_mut());
+}
+
+
+fn ptrace_util_set_instruction_pointer(pid: pid_t pid, ip: usize) -> ()
+{
+  uintptr_t offset = offsetof(struct user, regs.rip);
+  int result = ptrace(PTRACE_POKEUSER, pid, offset, ip);
+  if (result != 0) {
+    perror("ptrace_util_set_instruction_pointer: ");
+    abort();
+  }
+}
+
 fn disable_address_space_layout_randomization() -> () {
     unsafe {
         let old = ffi::personality(0xffffffff);
@@ -90,6 +107,12 @@ pub fn trap_inferior_continue<F>(inferior: TrapInferior, callback: &mut F) -> i8
 fn handle_breakpoint<F>(inferior: TrapInferior,  mut callback: &mut F) -> ()
     where F: FnMut(TrapInferior, TrapBreakpoint) -> () {
 
+    let original = unsafe { original_breakpoint_word };
+
+    ptrace(PTRACE_POKETEXT, inferior, target_address, original as * mut c_void)
+        .ok()
+        .expect("Failed PTRACE_POKETEXT");
+
     callback(inferior, 0)
 }
 
@@ -109,6 +132,8 @@ pub fn trap_inferior_set_breakpoint(inferior: TrapInferior, location: usize) -> 
     ptrace(PTRACE_POKETEXT, inferior, target_address, modified as * mut c_void)
         .ok()
         .expect("Failed PTRACE_POKETEXT");
+
+    unsafe { original_breakpoint_word = original as i64; }
 
     0
 }
