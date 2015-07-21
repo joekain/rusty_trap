@@ -11,12 +11,14 @@ use nix::sys::ptrace::ptrace::*;
 use nix::sys::wait::*;
 use std::ffi::CString;
 use std::ptr;
+use std::path::Path;
 use nix::sys::signal;
+
 
 pub type TrapInferior = pid_t;
 
-fn exec_inferior(filename: &str, args: &[&str]) -> () {
-    let c_filename = &CString::new(filename).unwrap();
+fn exec_inferior(filename: &Path, args: &[&str]) -> () {
+    let c_filename = &CString::new(filename.to_str().unwrap()).unwrap();
     ptrace(PTRACE_TRACEME, 0, ptr::null_mut(), ptr::null_mut())
         .ok()
         .expect("Failed PTRACE_TRACEME");
@@ -34,7 +36,7 @@ fn attach_inferior(pid: pid_t) -> Result<TrapInferior, Error> {
     }
 }
 
-pub fn trap_inferior_exec(filename: &str, args: &[&str]) -> Result<TrapInferior, Error> {
+pub fn trap_inferior_exec(filename: &Path, args: &[&str]) -> Result<TrapInferior, Error> {
     loop {
         match fork() {
             Ok(Child)                      => exec_inferior(filename, args),
