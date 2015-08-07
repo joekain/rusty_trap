@@ -6,14 +6,12 @@ use nix::unistd::Fork::*;
 use libc::pid_t;
 use nix::Error;
 use nix::errno;
-use nix::sys::ptrace::*;
-use nix::sys::ptrace::ptrace::*;
 use nix::sys::wait::*;
 use std::ffi::CString;
-use std::ptr;
 use std::path::Path;
 use nix::sys::signal;
-use libc::c_void;
+
+mod ptrace_util;
 
 
 pub type TrapInferior = pid_t;
@@ -29,23 +27,6 @@ mod ffi {
     }
 }
 
-fn ptrace_util_get_instruction_pointer(pid: pid_t pid) -> usize
-{
-  uintptr_t offset = offsetof(struct user, regs.rip);
-  return ptrace(PTRACE_PEEKUSER, pid, offset, ptr::null_mut());
-}
-
-
-fn ptrace_util_set_instruction_pointer(pid: pid_t pid, ip: usize) -> ()
-{
-  uintptr_t offset = offsetof(struct user, regs.rip);
-  int result = ptrace(PTRACE_POKEUSER, pid, offset, ip);
-  if (result != 0) {
-    perror("ptrace_util_set_instruction_pointer: ");
-    abort();
-  }
-}
-
 fn disable_address_space_layout_randomization() -> () {
     unsafe {
         let old = ffi::personality(0xffffffff);
@@ -56,9 +37,7 @@ fn disable_address_space_layout_randomization() -> () {
 fn exec_inferior(filename: &Path, args: &[&str]) -> () {
     let c_filename = &CString::new(filename.to_str().unwrap()).unwrap();
     disable_address_space_layout_randomization();
-    ptrace(PTRACE_TRACEME, 0, ptr::null_mut(), ptr::null_mut())
-        .ok()
-        .expect("Failed PTRACE_TRACEME");
+    ptrace_util::trace_me();
     execve(c_filename, &[], &[])
         .ok()
         .expect("Failed execve");
@@ -90,9 +69,7 @@ pub fn trap_inferior_continue<F>(inferior: TrapInferior, callback: &mut F) -> i8
     let pid = inferior;
 
     loop {
-        ptrace(PTRACE_CONT, pid, ptr::null_mut(), ptr::null_mut())
-            .ok()
-            .expect("Failed PTRACE_CONTINUE");
+        ptrace_util::cont(pid);
 
         match waitpid(pid, None) {
             Ok(WaitStatus::Exited(_pid, code)) => return code,
@@ -108,30 +85,23 @@ fn handle_breakpoint<F>(inferior: TrapInferior,  mut callback: &mut F) -> ()
     where F: FnMut(TrapInferior, TrapBreakpoint) -> () {
 
     let original = unsafe { original_breakpoint_word };
+    let target_address = ptrace_util::get_instruction_pointer(inferior) - 1;
+    ptrace_util::poke_text(inferior, target_address, original);
 
-    ptrace(PTRACE_POKETEXT, inferior, target_address, original as * mut c_void)
-        .ok()
-        .expect("Failed PTRACE_POKETEXT");
+    callback(inferior, 0);
 
-    callback(inferior, 0)
+    ptrace_util::set_instruction_pointer(inferior, target_address);
 }
 
 pub fn trap_inferior_set_breakpoint(inferior: TrapInferior, location: usize) -> TrapBreakpoint {
-    let target_address = location as * mut c_void;
     let aligned_address = location & !0x7usize;
 
-    let original = ptrace(PTRACE_PEEKTEXT, inferior, aligned_address as * mut c_void, ptr::null_mut())
-        .ok()
-        .expect("Failed PTRACE_PEEKTEXT");
-
+    let original = ptrace_util::peek_text(inferior, aligned_address);
     let shift = (location - aligned_address) * 8;
-    let mut modified = original as usize;
-    modified &= !0xFFusize << shift;
-    modified |= 0xCCusize << shift;
-
-    ptrace(PTRACE_POKETEXT, inferior, target_address, modified as * mut c_void)
-        .ok()
-        .expect("Failed PTRACE_POKETEXT");
+    let mut modified = original;
+    modified &= !0xFFi64 << shift;
+    modified |= 0xCCi64 << shift;
+    ptrace_util::poke_text(inferior, location, modified);
 
     unsafe { original_breakpoint_word = original as i64; }
 
