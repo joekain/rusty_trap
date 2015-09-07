@@ -12,7 +12,7 @@ use std::path::Path;
 use nix::sys::signal;
 
 mod ptrace_util;
-
+use ptrace_util::inferior_pointer::InferiorPointer;
 
 pub type TrapInferior = pid_t;
 pub type TrapBreakpoint = i32;
@@ -95,12 +95,12 @@ fn handle_breakpoint<F>(inferior: TrapInferior,  mut callback: &mut F) -> ()
 pub fn trap_inferior_set_breakpoint(inferior: TrapInferior, location: u64) -> TrapBreakpoint {
     let aligned_address = location & !0x7u64;
 
-    let original = ptrace_util::peek_text(inferior, ptrace_util::InferiorPointer(aligned_address));
+    let original = ptrace_util::peek_text(inferior, InferiorPointer(aligned_address));
     let shift = (location - aligned_address) * 8;
     let mut modified = original;
     modified &= !0xFFi64 << shift;
     modified |= 0xCCi64 << shift;
-    ptrace_util::poke_text(inferior, ptrace_util::InferiorPointer(location), modified);
+    ptrace_util::poke_text(inferior, InferiorPointer(location), modified);
 
     unsafe { original_breakpoint_word = original as i64; }
 
