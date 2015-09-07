@@ -7,6 +7,12 @@ use std::ops::{Add, Sub};
 
 #[derive(Copy, Clone)]
 pub struct InferiorPointer(pub u64);
+impl InferiorPointer {
+    fn as_voidptr(&self) -> * mut c_void {
+        let &InferiorPointer(u) = self;
+        u as * mut c_void
+    }
+}
 impl Add<i64> for InferiorPointer {
     type Output = InferiorPointer;
     fn add(self, rhs: i64) -> InferiorPointer {
@@ -29,6 +35,7 @@ impl Sub<i64> for InferiorPointer {
         }
     }
 }
+
 
 pub mod user {
     pub mod regs {
@@ -76,9 +83,7 @@ pub fn get_instruction_pointer(pid: pid_t) -> InferiorPointer {
 }
 
 pub fn set_instruction_pointer(pid: pid_t, ip: InferiorPointer) -> () {
-    let InferiorPointer(raw_address) = ip;
-
-    ptrace(PTRACE_POKEUSER, pid, user::regs::RIP as * mut c_void, raw_address as * mut c_void)
+    ptrace(PTRACE_POKEUSER, pid, user::regs::RIP as * mut c_void, ip.as_voidptr())
         .ok()
         .expect("Failed PTRACE_POKEUSER");
 }
@@ -90,17 +95,13 @@ pub fn cont(pid: pid_t) -> () {
 }
 
 pub fn peek_text(pid: pid_t, address: InferiorPointer) -> i64 {
-    let InferiorPointer(raw_address) = address;
-
-    ptrace(PTRACE_PEEKTEXT, pid, raw_address as * mut c_void, ptr::null_mut())
+    ptrace(PTRACE_PEEKTEXT, pid, address.as_voidptr(), ptr::null_mut())
         .ok()
         .expect("Failed PTRACE_PEEKTEXT")
 }
 
 pub fn poke_text(pid: pid_t, address: InferiorPointer, value: i64) -> () {
-    let InferiorPointer(raw_address) = address;
-
-    ptrace(PTRACE_POKETEXT, pid, raw_address as * mut c_void, value as * mut c_void)
+    ptrace(PTRACE_POKETEXT, pid, address.as_voidptr(), value as * mut c_void)
         .ok()
         .expect("Failed PTRACE_POKETEXT");
 }
