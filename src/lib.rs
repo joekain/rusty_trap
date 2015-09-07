@@ -83,7 +83,6 @@ pub fn trap_inferior_continue<F>(inferior: TrapInferior, callback: &mut F) -> i8
 
 fn handle_breakpoint<F>(inferior: TrapInferior,  mut callback: &mut F) -> ()
     where F: FnMut(TrapInferior, TrapBreakpoint) -> () {
-
     let original = unsafe { original_breakpoint_word };
     let target_address = ptrace_util::get_instruction_pointer(inferior) - 1;
     ptrace_util::poke_text(inferior, target_address, original);
@@ -93,15 +92,15 @@ fn handle_breakpoint<F>(inferior: TrapInferior,  mut callback: &mut F) -> ()
     ptrace_util::set_instruction_pointer(inferior, target_address);
 }
 
-pub fn trap_inferior_set_breakpoint(inferior: TrapInferior, location: usize) -> TrapBreakpoint {
-    let aligned_address = location & !0x7usize;
+pub fn trap_inferior_set_breakpoint(inferior: TrapInferior, location: u64) -> TrapBreakpoint {
+    let aligned_address = location & !0x7u64;
 
-    let original = ptrace_util::peek_text(inferior, aligned_address);
+    let original = ptrace_util::peek_text(inferior, ptrace_util::InferiorPointer(aligned_address));
     let shift = (location - aligned_address) * 8;
     let mut modified = original;
     modified &= !0xFFi64 << shift;
     modified |= 0xCCi64 << shift;
-    ptrace_util::poke_text(inferior, location, modified);
+    ptrace_util::poke_text(inferior, ptrace_util::InferiorPointer(location), modified);
 
     unsafe { original_breakpoint_word = original as i64; }
 
