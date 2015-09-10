@@ -18,3 +18,7 @@ path = "src/lib.rs"
 [[bin]]
 name = "twelve"
 path = "tests/inferiors/twelve.rs"
+
+[[bin]]
+name = "loop"
+path = "tests/inferiors/loop.rs"
