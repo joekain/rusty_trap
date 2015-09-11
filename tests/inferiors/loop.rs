@@ -3,7 +3,7 @@ pub fn foo() -> i32 {
 }
 
 pub fn main() {
-    for _x in 0..10 {
+    for _x in 0..5 {
       foo();
     }
 }

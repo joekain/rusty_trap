@@ -74,3 +74,9 @@ pub fn poke_text(pid: pid_t, address: inferior_pointer::InferiorPointer, value: 
         .ok()
         .expect("Failed PTRACE_POKETEXT");
 }
+
+pub fn single_step(pid: pid_t) -> () {
+    ptrace(PTRACE_SINGLESTEP, pid, ptr::null_mut(), ptr::null_mut())
+        .ok()
+        .expect("Failed PTRACE_SINGLESTEP");
+}
