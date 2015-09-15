@@ -20,7 +20,7 @@ use inferior::*;
 mod breakpoint;
 
 pub use self::breakpoint::trap_inferior_set_breakpoint;
-use breakpoint::{handle_breakpoint, TrapBreakpoint};
+use breakpoint::{handle, TrapBreakpoint};
 
 #[derive(Copy, Clone)]
 struct Breakpoint {
@@ -95,7 +95,7 @@ pub fn trap_inferior_continue<F>(inferior: TrapInferior, callback: &mut F) -> i8
         inf.state = match waitpid(inf.pid, None) {
             Ok(WaitStatus::Exited(_pid, code)) => return code,
             Ok(WaitStatus::Stopped(_pid, signal::SIGTRAP)) =>
-                handle_breakpoint(inf, callback),
+                breakpoint::handle(inf, callback),
             Ok(WaitStatus::Stopped(_pid, signal)) => {
                 panic!("Unexpected stop on signal {} in trap_inferior_continue.  State: {}", signal, inf.state as i32)
             },
