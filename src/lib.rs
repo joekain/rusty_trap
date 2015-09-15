@@ -12,7 +12,6 @@ use std::path::Path;
 use nix::sys::signal;
 
 mod ptrace_util;
-use ptrace_util::inferior_pointer::InferiorPointer;
 
 mod inferior;
 use inferior::*;

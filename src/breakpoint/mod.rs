@@ -1,4 +1,3 @@
-use ptrace_util::inferior_pointer::InferiorPointer;
 use ptrace_util::*;
 use inferior::*;
 

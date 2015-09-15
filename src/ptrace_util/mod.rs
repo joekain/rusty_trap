@@ -4,7 +4,7 @@ use nix::sys::ptrace::ptrace::*;
 use std::ptr;
 use libc::c_void;
 
-pub mod inferior_pointer;
+use inferior::InferiorPointer;
 
 pub mod user {
     pub mod regs {
@@ -44,14 +44,14 @@ pub fn trace_me() -> () {
         .expect("Failed PTRACE_TRACEME");
 }
 
-pub fn get_instruction_pointer(pid: pid_t) -> inferior_pointer::InferiorPointer {
+pub fn get_instruction_pointer(pid: pid_t) -> InferiorPointer {
     let raw = ptrace(PTRACE_PEEKUSER, pid, user::regs::RIP as * mut c_void, ptr::null_mut())
         .ok()
         .expect("Failed PTRACE_PEEKUSER");
-    inferior_pointer::InferiorPointer(raw as u64)
+    InferiorPointer(raw as u64)
 }
 
-pub fn set_instruction_pointer(pid: pid_t, ip: inferior_pointer::InferiorPointer) -> () {
+pub fn set_instruction_pointer(pid: pid_t, ip: InferiorPointer) -> () {
     ptrace(PTRACE_POKEUSER, pid, user::regs::RIP as * mut c_void, ip.as_voidptr())
         .ok()
         .expect("Failed PTRACE_POKEUSER");
@@ -63,13 +63,13 @@ pub fn cont(pid: pid_t) -> () {
         .expect("Failed PTRACE_CONTINUE");
 }
 
-pub fn peek_text(pid: pid_t, address: inferior_pointer::InferiorPointer) -> i64 {
+pub fn peek_text(pid: pid_t, address: InferiorPointer) -> i64 {
     ptrace(PTRACE_PEEKTEXT, pid, address.as_voidptr(), ptr::null_mut())
         .ok()
         .expect("Failed PTRACE_PEEKTEXT")
 }
 
-pub fn poke_text(pid: pid_t, address: inferior_pointer::InferiorPointer, value: i64) -> () {
+pub fn poke_text(pid: pid_t, address: InferiorPointer, value: i64) -> () {
     ptrace(PTRACE_POKETEXT, pid, address.as_voidptr(), value as * mut c_void)
         .ok()
         .expect("Failed PTRACE_POKETEXT");
