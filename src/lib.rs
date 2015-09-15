@@ -14,21 +14,10 @@ use nix::sys::signal;
 mod ptrace_util;
 use ptrace_util::inferior_pointer::InferiorPointer;
 
-pub type TrapInferior = pid_t;
+mod inferior;
+use inferior::*;
+
 pub type TrapBreakpoint = i32;
-
-#[derive(Copy, Clone)]
-enum InferiorState {
-    Running,
-    Stopped,
-    SingleStepping
-}
-
-#[derive(Copy, Clone)]
-struct Inferior {
-    pid: pid_t,
-    state: InferiorState
-}
 
 #[derive(Copy, Clone)]
 struct Breakpoint {
