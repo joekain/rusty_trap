@@ -17,7 +17,10 @@ use ptrace_util::inferior_pointer::InferiorPointer;
 mod inferior;
 use inferior::*;
 
-pub type TrapBreakpoint = i32;
+mod breakpoint;
+
+pub use self::breakpoint::trap_inferior_set_breakpoint;
+use breakpoint::{handle_breakpoint, TrapBreakpoint};
 
 #[derive(Copy, Clone)]
 struct Breakpoint {
@@ -102,55 +105,4 @@ pub fn trap_inferior_continue<F>(inferior: TrapInferior, callback: &mut F) -> i8
 
         unsafe { global_inferior = inf };
     }
-}
-
-fn step_over_breakpoint(inferior: TrapInferior, bp: Breakpoint) -> () {
-    ptrace_util::poke_text(inferior, bp.aligned_address, bp.original_breakpoint_word);
-    ptrace_util::set_instruction_pointer(inferior, bp.target_address);
-    ptrace_util::single_step(inferior);
-}
-
-fn set_breakpoint(inferior: TrapInferior, bp: Breakpoint) -> () {
-    let mut modified = bp.original_breakpoint_word;
-    modified &= !0xFFi64 << bp.shift;
-    modified |= 0xCCi64 << bp.shift;
-    ptrace_util::poke_text(inferior, bp.aligned_address, modified);
-}
-
-fn handle_breakpoint<F>(inf: Inferior,  mut callback: &mut F) -> InferiorState
-    where F: FnMut(TrapInferior, TrapBreakpoint) -> () {
-    let inferior = inf.pid;
-
-    let bp = unsafe { global_breakpoint };
-    match inf.state {
-        InferiorState::Running => {
-            callback(inferior, 0);
-            step_over_breakpoint(inferior, bp);
-            InferiorState::SingleStepping
-        },
-        InferiorState::SingleStepping => {
-            set_breakpoint(inferior, bp);
-            ptrace_util::cont(inferior);
-            InferiorState::Running
-        },
-        _ => panic!("Unsupported breakpoint encountered during supported inferior state")
-    }
-}
-
-pub fn trap_inferior_set_breakpoint(inferior: TrapInferior, location: u64) -> TrapBreakpoint {
-    let aligned_address = location & !0x7u64;
-    let bp = Breakpoint {
-        shift : (location - aligned_address) * 8,
-        aligned_address: InferiorPointer(aligned_address),
-        target_address: InferiorPointer(location),
-        original_breakpoint_word: ptrace_util::peek_text(inferior, InferiorPointer(aligned_address))
-    };
-
-    set_breakpoint(inferior, bp);
-
-    unsafe {
-        global_breakpoint = bp;
-    }
-
-    0
 }
