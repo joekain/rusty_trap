@@ -150,21 +150,14 @@ fn handle_breakpoint<F>(inf: Inferior,  mut callback: &mut F) -> InferiorState
 
 pub fn trap_inferior_set_breakpoint(inferior: TrapInferior, location: u64) -> TrapBreakpoint {
     let aligned_address = location & !0x7u64;
-    let original = ptrace_util::peek_text(inferior, InferiorPointer(aligned_address));
-    let shift = (location - aligned_address) * 8;
     let bp = Breakpoint {
-        shift : shift,
+        shift : (location - aligned_address) * 8,
         aligned_address: InferiorPointer(aligned_address),
         target_address: InferiorPointer(location),
-        original_breakpoint_word: original
+        original_breakpoint_word: ptrace_util::peek_text(inferior, InferiorPointer(aligned_address))
     };
 
     set_breakpoint(inferior, bp);
-
-    // let mut modified = original;
-    // modified &= !0xFFi64 << shift;
-    // modified |= 0xCCi64 << shift;
-    // ptrace_util::poke_text(inferior, InferiorPointer(aligned_address), modified);
 
     unsafe {
         global_breakpoint = bp;
