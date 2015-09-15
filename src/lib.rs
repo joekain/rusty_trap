@@ -105,7 +105,7 @@ pub fn trap_inferior_continue<F>(inferior: TrapInferior, callback: &mut F) -> i8
             Ok(WaitStatus::Stopped(_pid, signal::SIGTRAP)) =>
                 handle_breakpoint(inf, callback),
             Ok(WaitStatus::Stopped(_pid, signal)) => {
-                panic!("Unexpected stop on {} in trap_inferior_continue", signal)
+                panic!("Unexpected stop on signal {} in trap_inferior_continue.  State: {}", signal, inf.state as i32)
             },
             Ok(_) => panic!("Unexpected stop in trap_inferior_continue"),
             Err(_) => panic!("Unhandled error in trap_inferior_continue")
