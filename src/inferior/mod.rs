@@ -1,6 +1,8 @@
 use libc::pid_t;
 use libc::c_void;
 use std::ops::{Add, Sub};
+use std::any::Any;
+use std::vec::Vec;
 
 #[derive(Copy, Clone)]
 pub enum InferiorState {
@@ -9,13 +11,14 @@ pub enum InferiorState {
     SingleStepping
 }
 
-#[derive(Copy, Clone)]
+//#[derive(Copy, Clone)]
 pub struct Inferior {
     pub pid: pid_t,
-    pub state: InferiorState
+    pub state: InferiorState,
+    pub privates: Vec<Box<Any>>
 }
 
-pub type TrapInferior = pid_t;
+pub type TrapInferior = Box<Inferior>;
 
 #[derive(Copy, Clone)]
 pub struct InferiorPointer(pub u64);

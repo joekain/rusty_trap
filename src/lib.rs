@@ -29,13 +29,13 @@ struct Breakpoint {
     original_breakpoint_word : i64
 }
 
-static mut global_breakpoint : Breakpoint = Breakpoint {
-    shift: 0,
-    target_address: InferiorPointer(0),
-    aligned_address: InferiorPointer(0),
-    original_breakpoint_word: 0
-};
-static mut global_inferior : Inferior = Inferior { pid: 0, state: InferiorState::Stopped };
+// static mut global_breakpoint : Breakpoint = Breakpoint {
+//     shift: 0,
+//     target_address: InferiorPointer(0),
+//     aligned_address: InferiorPointer(0),
+//     original_breakpoint_word: 0
+// };
+//static mut global_inferior : Inferior = Inferior { pid: 0, state: InferiorState::Stopped, privates: vec![] };
 
 mod ffi {
     use libc::{c_int, c_long};
@@ -62,10 +62,10 @@ fn exec_inferior(filename: &Path, args: &[&str]) -> () {
     unreachable!();
 }
 
-fn attach_inferior(pid: pid_t) -> Result<Inferior, Error> {
+fn attach_inferior(pid: pid_t) -> Result<Box<Inferior>, Error> {
     match waitpid(pid, None) {
         Ok(WaitStatus::Stopped(pid, signal::SIGTRAP)) =>
-            return Ok(Inferior {pid: pid, state: InferiorState::Running}),
+            return Ok(Box::new(Inferior {pid: pid, state: InferiorState::Running, privates: vec![]})),
         Ok(_) => panic!("Unexpected stop in attach_inferior"),
         Err(e) => return Err(e)
     }
@@ -76,8 +76,8 @@ pub fn trap_inferior_exec(filename: &Path, args: &[&str]) -> Result<TrapInferior
         match fork() {
             Ok(Child)                      => exec_inferior(filename, args),
             Ok(Parent(pid))                => {
-                unsafe { global_inferior = attach_inferior(pid).ok().unwrap() };
-                return Ok(pid)
+                let inf = attach_inferior(pid).ok().unwrap();
+                return Ok(inf)
             },
             Err(Error::Sys(errno::EAGAIN)) => continue,
             Err(e)                         => return Err(e)
@@ -86,22 +86,20 @@ pub fn trap_inferior_exec(filename: &Path, args: &[&str]) -> Result<TrapInferior
 }
 
 pub fn trap_inferior_continue<F>(inferior: TrapInferior, callback: &mut F) -> i8
-    where F: FnMut(TrapInferior, TrapBreakpoint) -> () {
+    where F: FnMut(&TrapInferior, TrapBreakpoint) -> () {
 
-    let mut inf = unsafe { global_inferior };
+    let mut inf = inferior;
     ptrace_util::cont(inf.pid);
     loop {
         inf.state = match waitpid(inf.pid, None) {
             Ok(WaitStatus::Exited(_pid, code)) => return code,
             Ok(WaitStatus::Stopped(_pid, signal::SIGTRAP)) =>
-                breakpoint::handle(inf, callback),
+                breakpoint::handle(&inf, callback),
             Ok(WaitStatus::Stopped(_pid, signal)) => {
                 panic!("Unexpected stop on signal {} in trap_inferior_continue.  State: {}", signal, inf.state as i32)
             },
             Ok(_) => panic!("Unexpected stop in trap_inferior_continue"),
             Err(_) => panic!("Unhandled error in trap_inferior_continue")
         };
-
-        unsafe { global_inferior = inf };
     }
 }
