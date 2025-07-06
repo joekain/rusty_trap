@@ -4,12 +4,8 @@ version = "0.1.0"
 authors = ["Joseph Kain <joekain@gmail.com>"]
 
 [dependencies]
-libc     = "0.1.8"
-
-[dependencies.nix]
-git = "https://github.com/joekain/nix-rust.git"
-version = "0.3.8"
-branch = "WaitStatus"
+libc = "0.2.174"
+nix = "0.30.1"
 
 [lib]
 name = "rusty_trap"
