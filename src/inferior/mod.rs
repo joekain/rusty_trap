@@ -24,6 +24,11 @@ impl InferiorPointer {
         let &InferiorPointer(u) = self;
         u as * mut c_void
     }
+
+    pub fn as_i64(&self) -> i64 {
+        let &InferiorPointer(u) = self;
+        u as i64
+    }
 }
 impl Add<i64> for InferiorPointer {
     type Output = InferiorPointer;

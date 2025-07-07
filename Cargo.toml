@@ -5,7 +5,7 @@ authors = ["Joseph Kain <joekain@gmail.com>"]
 
 [dependencies]
 libc = "0.2.174"
-nix = "0.30.1"
+nix = {version = "0.30.1", features = ["process", "ptrace", "signal"]}
 
 [lib]
 name = "rusty_trap"
