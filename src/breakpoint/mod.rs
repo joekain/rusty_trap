@@ -36,8 +36,6 @@ pub fn handle<F>(inf: Inferior,  mut callback: &mut F) -> InferiorState
     where F: FnMut(TrapInferior, TrapBreakpoint) -> () {
     let inferior = inf.pid;
 
-    println!("in breakpoint::handle inf.state = {}", inf.state as i32);
-
     let bp = unsafe { global_breakpoint };
     match inf.state {
         InferiorState::Running => {

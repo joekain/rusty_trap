@@ -1,8 +1,8 @@
 extern crate rusty_trap;
 use std::path::Path;
 
-const ADDRESS_OF_MAIN : u64 = 0x000055555555b850;
-const ADDRESS_OF_FOO : u64 =  0x000055555555ba00;
+const ADDRESS_OF_MAIN : u64 = 0x000055555555b830;
+const ADDRESS_OF_FOO : u64 =  0x000055555555b9e0;
 
 #[test]
 fn it_can_exec () {
