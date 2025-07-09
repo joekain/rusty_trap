@@ -27,7 +27,7 @@ fn step_over(inferior: TrapInferior, bp: Breakpoint) -> () {
 
 fn set(inferior: TrapInferior, bp: Breakpoint) -> () {
     let mut modified = bp.original_breakpoint_word;
-    modified &= !0xFFi64 << bp.shift;
+    modified &= !(0xFFi64 << bp.shift);
     modified |= 0xCCi64 << bp.shift;
     poke_text(inferior, bp.aligned_address, modified);
 }
