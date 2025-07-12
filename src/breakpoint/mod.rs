@@ -1,7 +1,10 @@
 use inferior::*;
 use ptrace_util::*;
+use nix::sys::wait::*;
+use nix::unistd::Pid;
+use nix::sys::signal;
 
-pub type TrapBreakpoint = i32;
+use crate::ptrace_util;
 
 #[derive(Copy, Clone)]
 struct Breakpoint {
@@ -11,12 +14,9 @@ struct Breakpoint {
     original_breakpoint_word: i64,
 }
 
-static mut GLOBAL_BREAKPOINT: Breakpoint = Breakpoint {
-    shift: 0,
-    target_address: InferiorPointer(0),
-    aligned_address: InferiorPointer(0),
-    original_breakpoint_word: 0,
-};
+pub type TrapBreakpoint = usize;
+
+static mut GLOBAL_BREAKPOINTS: Vec<Breakpoint> = Vec::<Breakpoint>::new();
 
 fn step_over(inferior: TrapInferior, bp: Breakpoint) {
     poke_text(inferior, bp.aligned_address, bp.original_breakpoint_word);
@@ -31,42 +31,62 @@ fn set(inferior: TrapInferior, bp: Breakpoint) {
     poke_text(inferior, bp.aligned_address, modified);
 }
 
+fn find_breakpoint_matching_inferior_instruction_pointer(inf: Inferior) -> Option<(TrapBreakpoint, Breakpoint)> {
+    let ip = ptrace_util::get_instruction_pointer(inf.pid).as_i64();
+    unsafe { for (idx, bp) in GLOBAL_BREAKPOINTS.iter().enumerate() {
+	if bp.target_address.as_i64() == ip - 1 {
+	    return Some((idx, *bp))
+	}
+    } };
+    None
+}
+
 pub fn handle<F>(inf: Inferior, callback: &mut F) -> InferiorState
 where
     F: FnMut(TrapInferior, TrapBreakpoint),
 {
     let inferior = inf.pid;
+    let (user_breakpoint, bp) =
+        find_breakpoint_matching_inferior_instruction_pointer(inf)
+        .expect("Could not find breakpoint");
 
-    let bp = unsafe { GLOBAL_BREAKPOINT };
     match inf.state {
-        InferiorState::Running => {
-            callback(inferior, 0);
-            step_over(inferior, bp);
-            InferiorState::SingleStepping
-        }
-        InferiorState::SingleStepping => {
+        InferiorState::Running => (),
+        _ => panic!("Unhandled error in breakpoint::handle"),
+    }
+    callback(inferior, user_breakpoint);
+    step_over(inferior, bp);
+    return match waitpid(Pid::from_raw(inf.pid), None) {
+        Ok(WaitStatus::Stopped(_pid, signal::SIGTRAP)) => {
             set(inferior, bp);
             cont(inferior);
             InferiorState::Running
         }
-        _ => panic!("Unsupported breakpoint encountered during supported inferior state"),
-    }
+        Ok(WaitStatus::Exited(_pid, _code)) => InferiorState::Running,
+        Ok(WaitStatus::Stopped(_pid, signal)) => {
+            panic!(
+                "Unexpected stop on signal {} in breakpoint::handle.  State: {}",
+                signal, inf.state as i32
+            )
+        }
+        Ok(_) => panic!("Unexpected stop in breakpoint::handle"),
+        Err(_) => panic!("Unhandled error in breakpoint::handle"),
+    };
 }
 
 pub fn trap_inferior_set_breakpoint(inferior: TrapInferior, location: u64) -> TrapBreakpoint {
     let aligned_address = location & !0x7u64;
-    let bp = Breakpoint {
-        shift: (location - aligned_address) * 8,
-        aligned_address: InferiorPointer(aligned_address),
-        target_address: InferiorPointer(location),
-        original_breakpoint_word: peek_text(inferior, InferiorPointer(aligned_address)),
+    let user_bp = unsafe {
+	GLOBAL_BREAKPOINTS.push(Breakpoint {
+            shift: (location - aligned_address) * 8,
+            aligned_address: InferiorPointer(aligned_address),
+            target_address: InferiorPointer(location),
+            original_breakpoint_word: peek_text(inferior, InferiorPointer(aligned_address)),
+	});
+	GLOBAL_BREAKPOINTS.len() - 1
     };
 
-    set(inferior, bp);
+    set(inferior, unsafe {GLOBAL_BREAKPOINTS[user_bp]});
 
-    unsafe {
-        GLOBAL_BREAKPOINT = bp;
-    }
-
-    0
+    user_bp
 }
