@@ -1,22 +1,23 @@
 extern crate rusty_trap;
 use std::path::Path;
 
-const ADDRESS_OF_MAIN : u64 = 0x000055555555b830;
-const ADDRESS_OF_FOO : u64 =  0x000055555555b9e0;
+const ADDRESS_OF_MAIN: u64 = 0x000055555555b830;
+const ADDRESS_OF_FOO: u64 = 0x000055555555b9e0;
 
 #[test]
-fn it_can_exec () {
-    let inferior = rusty_trap::trap_inferior_exec(Path::new("./target/debug/twelve"),&[])
-        .unwrap();
-    assert_eq!(12, rusty_trap::trap_inferior_continue(inferior, &mut |_, _| {}));
+fn it_can_exec() {
+    let inferior = rusty_trap::trap_inferior_exec(Path::new("./target/debug/twelve"), &[]).unwrap();
+    assert_eq!(
+        12,
+        rusty_trap::trap_inferior_continue(inferior, &mut |_, _| {})
+    );
 }
 
 #[test]
-fn it_can_set_breakpoints () {
+fn it_can_set_breakpoints() {
     let mut breakpoint_count: i32 = 0;
 
-    let inferior = rusty_trap::trap_inferior_exec(Path::new("./target/debug/twelve"), &[])
-        .unwrap();
+    let inferior = rusty_trap::trap_inferior_exec(Path::new("./target/debug/twelve"), &[]).unwrap();
     let bp = rusty_trap::trap_inferior_set_breakpoint(inferior, ADDRESS_OF_MAIN);
     rusty_trap::trap_inferior_continue(inferior, &mut |passed_inferior, passed_bp| {
         assert_eq!(passed_inferior, inferior);
@@ -28,11 +29,10 @@ fn it_can_set_breakpoints () {
 }
 
 #[test]
-fn it_can_handle_a_breakpoint_more_than_once () {
+fn it_can_handle_a_breakpoint_more_than_once() {
     let mut breakpoint_count: i32 = 0;
 
-    let inferior = rusty_trap::trap_inferior_exec(Path::new("./target/debug/loop"), &[])
-        .unwrap();
+    let inferior = rusty_trap::trap_inferior_exec(Path::new("./target/debug/loop"), &[]).unwrap();
     let bp = rusty_trap::trap_inferior_set_breakpoint(inferior, ADDRESS_OF_FOO);
     rusty_trap::trap_inferior_continue(inferior, &mut |passed_inferior, passed_bp| {
         assert_eq!(passed_inferior, inferior);

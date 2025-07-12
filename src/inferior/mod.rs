@@ -1,18 +1,18 @@
-use libc::pid_t;
 use libc::c_void;
+use libc::pid_t;
 use std::ops::{Add, Sub};
 
 #[derive(Copy, Clone)]
 pub enum InferiorState {
     Running,
     Stopped,
-    SingleStepping
+    SingleStepping,
 }
 
 #[derive(Copy, Clone)]
 pub struct Inferior {
     pub pid: pid_t,
-    pub state: InferiorState
+    pub state: InferiorState,
 }
 
 pub type TrapInferior = pid_t;
@@ -20,9 +20,9 @@ pub type TrapInferior = pid_t;
 #[derive(Copy, Clone)]
 pub struct InferiorPointer(pub u64);
 impl InferiorPointer {
-    pub fn as_voidptr(&self) -> * mut c_void {
+    pub fn as_voidptr(&self) -> *mut c_void {
         let &InferiorPointer(u) = self;
-        u as * mut c_void
+        u as *mut c_void
     }
 
     pub fn as_i64(&self) -> i64 {
