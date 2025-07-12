@@ -11,33 +11,33 @@ struct Breakpoint {
     original_breakpoint_word: i64,
 }
 
-static mut global_breakpoint: Breakpoint = Breakpoint {
+static mut GLOBAL_BREAKPOINT: Breakpoint = Breakpoint {
     shift: 0,
     target_address: InferiorPointer(0),
     aligned_address: InferiorPointer(0),
     original_breakpoint_word: 0,
 };
 
-fn step_over(inferior: TrapInferior, bp: Breakpoint) -> () {
+fn step_over(inferior: TrapInferior, bp: Breakpoint) {
     poke_text(inferior, bp.aligned_address, bp.original_breakpoint_word);
     set_instruction_pointer(inferior, bp.target_address);
     single_step(inferior);
 }
 
-fn set(inferior: TrapInferior, bp: Breakpoint) -> () {
+fn set(inferior: TrapInferior, bp: Breakpoint) {
     let mut modified = bp.original_breakpoint_word;
     modified &= !(0xFFi64 << bp.shift);
     modified |= 0xCCi64 << bp.shift;
     poke_text(inferior, bp.aligned_address, modified);
 }
 
-pub fn handle<F>(inf: Inferior, mut callback: &mut F) -> InferiorState
+pub fn handle<F>(inf: Inferior, callback: &mut F) -> InferiorState
 where
-    F: FnMut(TrapInferior, TrapBreakpoint) -> (),
+    F: FnMut(TrapInferior, TrapBreakpoint),
 {
     let inferior = inf.pid;
 
-    let bp = unsafe { global_breakpoint };
+    let bp = unsafe { GLOBAL_BREAKPOINT };
     match inf.state {
         InferiorState::Running => {
             callback(inferior, 0);
@@ -65,7 +65,7 @@ pub fn trap_inferior_set_breakpoint(inferior: TrapInferior, location: u64) -> Tr
     set(inferior, bp);
 
     unsafe {
-        global_breakpoint = bp;
+        GLOBAL_BREAKPOINT = bp;
     }
 
     0

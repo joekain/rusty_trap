@@ -36,31 +36,27 @@ pub mod user {
     }
 }
 
-pub fn trace_me() -> () {
-    ptrace::traceme().ok().expect("Failed PTRACE_TRACEME");
+pub fn trace_me() {
+    ptrace::traceme().expect("Failed PTRACE_TRACEME");
 }
 
 pub fn get_instruction_pointer(pid: pid_t) -> InferiorPointer {
     let raw = ptrace::read_user(Pid::from_raw(pid), user::regs::RIP as ptrace::AddressType)
-        .ok()
         .expect("Failed PTRACE_PEEKUSER");
     InferiorPointer(raw as u64)
 }
 
-pub fn set_instruction_pointer(pid: pid_t, ip: InferiorPointer) -> () {
+pub fn set_instruction_pointer(pid: pid_t, ip: InferiorPointer) {
     ptrace::write_user(
         Pid::from_raw(pid),
         user::regs::RIP as ptrace::AddressType,
         ip.as_i64(),
     )
-    .ok()
     .expect("Failed PTRACE_POKEUSER");
 }
 
-pub fn cont(pid: pid_t) -> () {
-    ptrace::cont(Pid::from_raw(pid), None)
-        .ok()
-        .expect("Failed PTRACE_CONTINUE");
+pub fn cont(pid: pid_t) {
+    ptrace::cont(Pid::from_raw(pid), None).expect("Failed PTRACE_CONTINUE");
 }
 
 pub fn peek_text(pid: pid_t, address: InferiorPointer) -> i64 {
@@ -69,19 +65,13 @@ pub fn peek_text(pid: pid_t, address: InferiorPointer) -> i64 {
     //   so these two operations are currently equivalent.
     // So use ptrace::read which is ptrace(PTRACE_PEEKDATA, ...)
     // An alterantive would be to use libc::ptrace.
-    ptrace::read(Pid::from_raw(pid), address.as_voidptr())
-        .ok()
-        .expect("Failed PTRACE_PEEKTEXT")
+    ptrace::read(Pid::from_raw(pid), address.as_voidptr()).expect("Failed PTRACE_PEEKTEXT")
 }
 
-pub fn poke_text(pid: pid_t, address: InferiorPointer, value: i64) -> () {
-    ptrace::write(Pid::from_raw(pid), address.as_voidptr(), value)
-        .ok()
-        .expect("Failed PTRACE_POKETEXT")
+pub fn poke_text(pid: pid_t, address: InferiorPointer, value: i64) {
+    ptrace::write(Pid::from_raw(pid), address.as_voidptr(), value).expect("Failed PTRACE_POKETEXT")
 }
 
-pub fn single_step(pid: pid_t) -> () {
-    ptrace::step(Pid::from_raw(pid), None)
-        .ok()
-        .expect("Failed PTRACE_SINGLESTEP");
+pub fn single_step(pid: pid_t) {
+    ptrace::step(Pid::from_raw(pid), None).expect("Failed PTRACE_SINGLESTEP");
 }
