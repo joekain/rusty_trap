@@ -17,12 +17,22 @@ pub enum InferiorState {
 pub struct Inferior {
     pub pid: pid_t,
     pub state: InferiorState,
-    pub breakpoints: HashMap<InferiorPointer, Breakpoint>  // Added this
+    pub breakpoints: HashMap<InferiorPointer, Breakpoint>
 }
 
-pub type TrapInferior = pid_t;
+impl Inferior {
+    pub fn new(pid: pid_t) -> Inferior {
+	Inferior {
+	    pid,
+	    state: InferiorState::Stopped,
+	    breakpoints: HashMap::new(),
+	}
+    }
+}
 
-#[derive(Copy, Clone, PartialEq, PartialOrd, Debug)]
+pub type TrapInferior = Inferior;
+
+#[derive(Copy, Clone, PartialEq, PartialOrd, Debug, Eq, Hash)]
 pub struct InferiorPointer(pub u64);
 impl InferiorPointer {
     pub fn as_voidptr(&self) -> *mut c_void {

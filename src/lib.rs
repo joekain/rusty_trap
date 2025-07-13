@@ -10,7 +10,6 @@ use nix::{
     unistd::{execve, fork, ForkResult},
     Error,
 };
-use std::collections::HashMap;
 use std::ffi::{CStr, CString};
 use std::path::Path;
 
@@ -23,12 +22,6 @@ mod breakpoint;
 
 pub use self::breakpoint::trap_inferior_set_breakpoint;
 use breakpoint::TrapBreakpoint;
-
-static mut global_inferior: Inferior = Inferior {
-    pid: 0,
-    state: InferiorState::Stopped,
-    breakpoints: HashMap::new(),
-};
 
 fn disable_address_space_layout_randomization() {
     unsafe {
@@ -55,49 +48,47 @@ fn exec_inferior(filename: &Path, args: &[&str]) {
 fn attach_inferior(raw_pid: pid_t) -> Result<Inferior, Error> {
     let nix_pid = Pid::from_raw(raw_pid);
     match waitpid(nix_pid, None) {
-        Ok(WaitStatus::Stopped(pid, signal::Signal::SIGTRAP)) => Ok(Inferior {
-            pid: pid.into(),
-            state: InferiorState::Running,
-        }),
+        Ok(WaitStatus::Stopped(pid, signal::Signal::SIGTRAP)) => Ok(Inferior::new(pid.into())),
         Ok(_) => panic!("Unexpected stop in attach_inferior"),
         Err(e) => Err(e),
     }
 }
 
-pub fn trap_inferior_exec(filename: &Path, args: &[&str]) -> Result<TrapInferior, Error> {
+pub fn trap_inferior_exec(filename: &Path, args: &[&str]) -> Result<Inferior, Error> {
     loop {
         match unsafe { fork() } {
-            Ok(ForkResult::Child) => exec_inferior(filename, args),
+            Ok(ForkResult::Child) => {
+		exec_inferior(filename, args);
+		unreachable!();
+	    }
             Ok(ForkResult::Parent { child: pid }) => {
-                unsafe { global_inferior = attach_inferior(pid.into()).ok().unwrap() };
-                return Ok(pid.into());
-            }
+		return attach_inferior(pid.into())
+	    }
             Err(Error::EAGAIN) => continue,
             Err(e) => return Err(e),
         }
     }
 }
 
-pub fn trap_inferior_continue<F>(inferior: TrapInferior, callback: &mut F) -> i32
+pub fn trap_inferior_continue<F>(inferior: &mut TrapInferior, callback: &mut F) -> i32
 where
-    F: FnMut(TrapInferior, TrapBreakpoint),
+    F: FnMut(&TrapInferior, TrapBreakpoint),
 {
-    let mut inf = unsafe { global_inferior };
-    ptrace_util::cont(inf.pid);
+    inferior.state = InferiorState::Running;
+    ptrace_util::cont(inferior.pid);
     loop {
-        inf.state = match waitpid(Pid::from_raw(inf.pid), None) {
+        inferior.state = match waitpid(Pid::from_raw(inferior.pid), None) {
             Ok(WaitStatus::Exited(_pid, code)) => return code,
-            Ok(WaitStatus::Stopped(_pid, signal::SIGTRAP)) => breakpoint::handle(inf, callback),
+            Ok(WaitStatus::Stopped(_pid, signal::SIGTRAP)) =>
+		breakpoint::handle(inferior, callback),
             Ok(WaitStatus::Stopped(_pid, signal)) => {
                 panic!(
                     "Unexpected stop on signal {} in trap_inferior_continue.  State: {}",
-                    signal, inf.state as i32
+                    signal, inferior.state as i32
                 )
             }
             Ok(_) => panic!("Unexpected stop in trap_inferior_continue"),
             Err(_) => panic!("Unhandled error in trap_inferior_continue"),
         };
-
-        unsafe { global_inferior = inf };
     }
 }
