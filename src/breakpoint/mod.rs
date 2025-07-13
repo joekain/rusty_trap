@@ -31,7 +31,7 @@ fn set(inferior: TrapInferior, bp: Breakpoint) {
     poke_text(inferior, bp.aligned_address, modified);
 }
 
-fn find_breakpoint_matching_inferior_instruction_pointer(inf: Inferior) -> Option<Breakpoint> {
+fn find_breakpoint_matching_inferior_instruction_pointer(inf: &Inferior) -> Option<Breakpoint> {
     let ip = ptrace_util::get_instruction_pointer(inf.pid).as_i64();
     unsafe { for bp in &GLOBAL_BREAKPOINTS {
 	if bp.target_address.as_i64() == ip - 1 {
@@ -47,7 +47,7 @@ where
 {
     let inferior = inf.pid;
     let bp =
-        find_breakpoint_matching_inferior_instruction_pointer(inf)
+        find_breakpoint_matching_inferior_instruction_pointer(&inf)
         .expect("Could not find breakpoint");
 
     match inf.state {
