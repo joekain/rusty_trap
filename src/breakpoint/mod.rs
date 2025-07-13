@@ -14,7 +14,7 @@ struct Breakpoint {
     original_breakpoint_word: i64,
 }
 
-pub type TrapBreakpoint = usize;
+pub type TrapBreakpoint = InferiorPointer;
 
 static mut GLOBAL_BREAKPOINTS: Vec<Breakpoint> = Vec::<Breakpoint>::new();
 
@@ -31,11 +31,11 @@ fn set(inferior: TrapInferior, bp: Breakpoint) {
     poke_text(inferior, bp.aligned_address, modified);
 }
 
-fn find_breakpoint_matching_inferior_instruction_pointer(inf: Inferior) -> Option<(TrapBreakpoint, Breakpoint)> {
+fn find_breakpoint_matching_inferior_instruction_pointer(inf: Inferior) -> Option<Breakpoint> {
     let ip = ptrace_util::get_instruction_pointer(inf.pid).as_i64();
-    unsafe { for (idx, bp) in GLOBAL_BREAKPOINTS.iter().enumerate() {
+    unsafe { for bp in &GLOBAL_BREAKPOINTS {
 	if bp.target_address.as_i64() == ip - 1 {
-	    return Some((idx, *bp))
+	    return Some(*bp)
 	}
     } };
     None
@@ -46,7 +46,7 @@ where
     F: FnMut(TrapInferior, TrapBreakpoint),
 {
     let inferior = inf.pid;
-    let (user_breakpoint, bp) =
+    let bp =
         find_breakpoint_matching_inferior_instruction_pointer(inf)
         .expect("Could not find breakpoint");
 
@@ -54,7 +54,7 @@ where
         InferiorState::Running => (),
         _ => panic!("Unhandled error in breakpoint::handle"),
     }
-    callback(inferior, user_breakpoint);
+    callback(inferior, bp.target_address);
     step_over(inferior, bp);
     return match waitpid(Pid::from_raw(inf.pid), None) {
         Ok(WaitStatus::Stopped(_pid, signal::SIGTRAP)) => {
@@ -76,7 +76,7 @@ where
 
 pub fn trap_inferior_set_breakpoint(inferior: TrapInferior, location: u64) -> TrapBreakpoint {
     let aligned_address = location & !0x7u64;
-    let user_bp = unsafe {
+    let index = unsafe {
 	GLOBAL_BREAKPOINTS.push(Breakpoint {
             shift: (location - aligned_address) * 8,
             aligned_address: InferiorPointer(aligned_address),
@@ -86,7 +86,7 @@ pub fn trap_inferior_set_breakpoint(inferior: TrapInferior, location: u64) -> Tr
 	GLOBAL_BREAKPOINTS.len() - 1
     };
 
-    set(inferior, unsafe {GLOBAL_BREAKPOINTS[user_bp]});
+    set(inferior, unsafe {GLOBAL_BREAKPOINTS[index]});
 
-    user_bp
+    InferiorPointer(location)
 }

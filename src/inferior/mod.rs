@@ -1,6 +1,7 @@
 use libc::c_void;
 use libc::pid_t;
 use std::ops::{Add, Sub};
+use std::fmt;
 
 #[derive(Copy, Clone)]
 pub enum InferiorState {
@@ -17,7 +18,7 @@ pub struct Inferior {
 
 pub type TrapInferior = pid_t;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, PartialOrd, Debug)]
 pub struct InferiorPointer(pub u64);
 impl InferiorPointer {
     pub fn as_voidptr(&self) -> *mut c_void {
@@ -50,5 +51,11 @@ impl Sub<i64> for InferiorPointer {
         } else {
             InferiorPointer(u + rhs as u64)
         }
+    }
+}
+impl fmt::Display for InferiorPointer {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let &InferiorPointer(u) = self;
+	write!(f, "{}", u)
     }
 }
