@@ -2,6 +2,9 @@ use libc::c_void;
 use libc::pid_t;
 use std::ops::{Add, Sub};
 use std::fmt;
+use std::collections::HashMap;
+use breakpoint::Breakpoint;
+
 
 #[derive(Copy, Clone)]
 pub enum InferiorState {
@@ -10,10 +13,11 @@ pub enum InferiorState {
     SingleStepping,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub struct Inferior {
     pub pid: pid_t,
     pub state: InferiorState,
+    pub breakpoints: HashMap<InferiorPointer, Breakpoint>  // Added this
 }
 
 pub type TrapInferior = pid_t;

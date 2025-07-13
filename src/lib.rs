@@ -10,6 +10,7 @@ use nix::{
     unistd::{execve, fork, ForkResult},
     Error,
 };
+use std::collections::HashMap;
 use std::ffi::{CStr, CString};
 use std::path::Path;
 
@@ -26,6 +27,7 @@ use breakpoint::TrapBreakpoint;
 static mut global_inferior: Inferior = Inferior {
     pid: 0,
     state: InferiorState::Stopped,
+    breakpoints: HashMap::new(),
 };
 
 fn disable_address_space_layout_randomization() {

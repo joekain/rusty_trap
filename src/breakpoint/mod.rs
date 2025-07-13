@@ -7,7 +7,7 @@ use nix::sys::signal;
 use crate::ptrace_util;
 
 #[derive(Copy, Clone)]
-struct Breakpoint {
+pub struct Breakpoint {
     shift: u64,
     target_address: InferiorPointer,
     aligned_address: InferiorPointer,
