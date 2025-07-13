@@ -57,6 +57,11 @@ fn it_can_handle_more_than_one_breakpoint() {
             bp_main_count += 1;
         } else if passed_bp == bp_foo {
             bp_foo_count += 1;
+        } else {
+            panic!(
+                "Unexpected breakpoint {} encountered.  Expected {} or {}",
+                passed_bp, bp_main, bp_foo
+            );
         }
     });
 
