@@ -4,8 +4,6 @@ use nix::sys::wait::*;
 use nix::unistd::Pid;
 use nix::sys::signal;
 
-use crate::ptrace_util;
-
 #[derive(Copy, Clone)]
 pub struct Breakpoint {
     shift: u64,
@@ -67,19 +65,17 @@ where
     };
 }
 
-pub fn trap_inferior_set_breakpoint(inferior: &TrapInferior, location: u64) -> TrapBreakpoint {
+pub fn trap_inferior_set_breakpoint(inferior: &mut TrapInferior, location: u64) -> TrapBreakpoint {
     let aligned_address = location & !0x7u64;
-    let index = unsafe {
-	GLOBAL_BREAKPOINTS.push(Breakpoint {
-            shift: (location - aligned_address) * 8,
-            aligned_address: InferiorPointer(aligned_address),
-            target_address: InferiorPointer(location),
-            original_breakpoint_word: peek_text(inferior.pid, InferiorPointer(aligned_address)),
-	});
-	GLOBAL_BREAKPOINTS.len() - 1
-    };
+    let target_address = InferiorPointer(location);
+    inferior.breakpoints.insert(target_address, Breakpoint {
+        shift: (location - aligned_address) * 8,
+        aligned_address: InferiorPointer(aligned_address),
+	target_address,
+        original_breakpoint_word: peek_text(inferior.pid, InferiorPointer(aligned_address)),
+    });
 
-    set(inferior, unsafe {GLOBAL_BREAKPOINTS[index]});
+    set(inferior, inferior.breakpoints.get(&target_address).unwrap());
 
     InferiorPointer(location)
 }
