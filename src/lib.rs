@@ -58,12 +58,10 @@ pub fn trap_inferior_exec(filename: &Path, args: &[&str]) -> Result<Inferior, Er
     loop {
         match unsafe { fork() } {
             Ok(ForkResult::Child) => {
-		exec_inferior(filename, args);
-		unreachable!();
-	    }
-            Ok(ForkResult::Parent { child: pid }) => {
-		return attach_inferior(pid.into())
-	    }
+                exec_inferior(filename, args);
+                unreachable!();
+            }
+            Ok(ForkResult::Parent { child: pid }) => return attach_inferior(pid.into()),
             Err(Error::EAGAIN) => continue,
             Err(e) => return Err(e),
         }
@@ -79,8 +77,9 @@ where
     loop {
         inferior.state = match waitpid(Pid::from_raw(inferior.pid), None) {
             Ok(WaitStatus::Exited(_pid, code)) => return code,
-            Ok(WaitStatus::Stopped(_pid, signal::SIGTRAP)) =>
-		breakpoint::handle(inferior, callback),
+            Ok(WaitStatus::Stopped(_pid, signal::SIGTRAP)) => {
+                breakpoint::handle(inferior, callback)
+            }
             Ok(WaitStatus::Stopped(_pid, signal)) => {
                 panic!(
                     "Unexpected stop on signal {} in trap_inferior_continue.  State: {}",

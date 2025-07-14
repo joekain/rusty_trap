@@ -1,8 +1,8 @@
 use inferior::*;
-use ptrace_util::*;
+use nix::sys::signal;
 use nix::sys::wait::*;
 use nix::unistd::Pid;
-use nix::sys::signal;
+use ptrace_util::*;
 
 #[derive(Copy, Clone)]
 pub struct Breakpoint {
@@ -15,7 +15,11 @@ pub struct Breakpoint {
 pub type TrapBreakpoint = InferiorPointer;
 
 fn step_over(inferior: &TrapInferior, bp: &Breakpoint) {
-    poke_text(inferior.pid, bp.aligned_address, bp.original_breakpoint_word);
+    poke_text(
+        inferior.pid,
+        bp.aligned_address,
+        bp.original_breakpoint_word,
+    );
     set_instruction_pointer(inferior.pid, bp.target_address);
     single_step(inferior.pid);
 }
@@ -37,8 +41,7 @@ pub fn handle<F>(inferior: &mut Inferior, callback: &mut F) -> InferiorState
 where
     F: FnMut(&TrapInferior, TrapBreakpoint),
 {
-    let bp =
-        find_breakpoint_matching_inferior_instruction_pointer(inferior)
+    let bp = find_breakpoint_matching_inferior_instruction_pointer(inferior)
         .expect("Could not find breakpoint");
 
     match inferior.state {
@@ -68,12 +71,15 @@ where
 pub fn trap_inferior_set_breakpoint(inferior: &mut TrapInferior, location: u64) -> TrapBreakpoint {
     let aligned_address = location & !0x7u64;
     let target_address = InferiorPointer(location);
-    inferior.breakpoints.insert(target_address, Breakpoint {
-        shift: (location - aligned_address) * 8,
-        aligned_address: InferiorPointer(aligned_address),
-	target_address,
-        original_breakpoint_word: peek_text(inferior.pid, InferiorPointer(aligned_address)),
-    });
+    inferior.breakpoints.insert(
+        target_address,
+        Breakpoint {
+            shift: (location - aligned_address) * 8,
+            aligned_address: InferiorPointer(aligned_address),
+            target_address,
+            original_breakpoint_word: peek_text(inferior.pid, InferiorPointer(aligned_address)),
+        },
+    );
 
     set(inferior, inferior.breakpoints.get(&target_address).unwrap());
 
