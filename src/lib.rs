@@ -30,7 +30,7 @@ fn disable_address_space_layout_randomization() {
     }
 }
 
-fn exec_inferior(filename: &Path, args: &[&str]) {
+fn exec_inferior(filename: &Path, _args: &[&str]) {
     // let c_filename = &CStr::from_ptr(filename.to_str().unwrap().as_ptr() as *const i8);
     let cstring_filename = CString::new(
         filename
