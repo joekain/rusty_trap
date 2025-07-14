@@ -16,28 +16,23 @@ pub struct Breakpoint {
 
 pub type TrapBreakpoint = InferiorPointer;
 
-static mut GLOBAL_BREAKPOINTS: Vec<Breakpoint> = Vec::<Breakpoint>::new();
-fn step_over(inferior: &TrapInferior, bp: Breakpoint) {
+fn step_over(inferior: &TrapInferior, bp: &Breakpoint) {
     poke_text(inferior.pid, bp.aligned_address, bp.original_breakpoint_word);
     set_instruction_pointer(inferior.pid, bp.target_address);
     single_step(inferior.pid);
 }
 
-fn set(inferior: &TrapInferior, bp: Breakpoint) {
+fn set(inferior: &TrapInferior, bp: &Breakpoint) {
     let mut modified = bp.original_breakpoint_word;
     modified &= !(0xFFi64 << bp.shift);
     modified |= 0xCCi64 << bp.shift;
     poke_text(inferior.pid, bp.aligned_address, modified);
 }
 
-fn find_breakpoint_matching_inferior_instruction_pointer(inf: &Inferior) -> Option<Breakpoint> {
-    let ip = ptrace_util::get_instruction_pointer(inf.pid).as_i64();
-    unsafe { for bp in &GLOBAL_BREAKPOINTS {
-	if bp.target_address.as_i64() == ip - 1 {
-	    return Some(*bp)
-	}
-    } };
-    None
+fn find_breakpoint_matching_inferior_instruction_pointer(inf: &Inferior) -> Option<&Breakpoint> {
+    let InferiorPointer(ip) = get_instruction_pointer(inf.pid);
+    let ip = InferiorPointer(ip - 1);
+    return inf.breakpoints.get(&ip);
 }
 
 pub fn handle<F>(inferior: &mut Inferior, callback: &mut F) -> InferiorState
