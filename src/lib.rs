@@ -68,7 +68,7 @@ pub fn trap_inferior_exec(filename: &Path, args: &[&str]) -> Result<Inferior, Er
     }
 }
 
-pub fn trap_inferior_continue<F>(inferior: &mut TrapInferior, callback: &mut F) -> i32
+pub fn trap_inferior_continue<F>(mut inferior: TrapInferior, mut callback: F) -> (TrapInferior, i32)
 where
     F: FnMut(&TrapInferior, TrapBreakpoint),
 {
@@ -76,9 +76,9 @@ where
     ptrace_util::cont(inferior.pid);
     loop {
         inferior.state = match waitpid(Pid::from_raw(inferior.pid), None) {
-            Ok(WaitStatus::Exited(_pid, code)) => return code,
+            Ok(WaitStatus::Exited(_pid, code)) => return (inferior, code),
             Ok(WaitStatus::Stopped(_pid, signal::SIGTRAP)) => {
-                breakpoint::handle(inferior, callback)
+                breakpoint::handle(&mut inferior, &mut callback)
             }
             Ok(WaitStatus::Stopped(_pid, signal)) => {
                 panic!(
