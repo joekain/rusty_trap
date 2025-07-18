@@ -1,5 +1,8 @@
+use breakpoint::Breakpoint;
 use libc::c_void;
 use libc::pid_t;
+use std::collections::HashMap;
+use std::fmt;
 use std::ops::{Add, Sub};
 
 #[derive(Copy, Clone)]
@@ -9,15 +12,26 @@ pub enum InferiorState {
     SingleStepping,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub struct Inferior {
     pub pid: pid_t,
     pub state: InferiorState,
+    pub breakpoints: HashMap<InferiorPointer, Breakpoint>,
 }
 
-pub type TrapInferior = pid_t;
+impl Inferior {
+    pub fn new(pid: pid_t) -> Inferior {
+        Inferior {
+            pid,
+            state: InferiorState::Stopped,
+            breakpoints: HashMap::new(),
+        }
+    }
+}
 
-#[derive(Copy, Clone)]
+pub type TrapInferior = Inferior;
+
+#[derive(Copy, Clone, PartialEq, PartialOrd, Debug, Eq, Hash)]
 pub struct InferiorPointer(pub u64);
 impl InferiorPointer {
     pub fn as_voidptr(&self) -> *mut c_void {
@@ -50,5 +64,11 @@ impl Sub<i64> for InferiorPointer {
         } else {
             InferiorPointer(u + rhs as u64)
         }
+    }
+}
+impl fmt::Display for InferiorPointer {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let &InferiorPointer(u) = self;
+        write!(f, "{}", u)
     }
 }
