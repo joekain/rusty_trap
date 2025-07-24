@@ -68,7 +68,7 @@ where
     };
 }
 
-pub fn trap_inferior_set_breakpoint(
+fn set_breakpoint_at_address(
     mut inferior: TrapInferior,
     location: u64,
 ) -> (TrapInferior, TrapBreakpoint) {
@@ -90,4 +90,12 @@ pub fn trap_inferior_set_breakpoint(
     );
 
     (inferior, InferiorPointer(location))
+}
+
+pub fn trap_inferior_set_breakpoint(
+    mut inferior: TrapInferior,
+    location: &str,
+) -> (TrapInferior, TrapBreakpoint) {
+    let address: u64 = 0x55555555b9f4;
+    return set_breakpoint_at_address(inferior, address);
 }
