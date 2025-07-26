@@ -45,16 +45,16 @@ fn exec_inferior(filename: &Path, _args: &[&str]) {
     unreachable!();
 }
 
-fn attach_inferior(raw_pid: pid_t) -> Result<Inferior, Error> {
+fn attach_inferior(raw_pid: pid_t) -> Result<TrapInferior, Error> {
     let nix_pid = Pid::from_raw(raw_pid);
     match waitpid(nix_pid, None) {
-        Ok(WaitStatus::Stopped(pid, signal::Signal::SIGTRAP)) => Ok(Inferior::new(pid.into())),
+        Ok(WaitStatus::Stopped(pid, signal::Signal::SIGTRAP)) => Ok(TrapInferior::new(pid.into())),
         Ok(_) => panic!("Unexpected stop in attach_inferior"),
         Err(e) => Err(e),
     }
 }
 
-pub fn trap_inferior_exec(filename: &Path, args: &[&str]) -> Result<Inferior, Error> {
+pub fn trap_inferior_exec(filename: &Path, args: &[&str]) -> Result<TrapInferior, Error> {
     loop {
         match unsafe { fork() } {
             Ok(ForkResult::Child) => {

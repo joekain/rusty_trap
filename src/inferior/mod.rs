@@ -13,23 +13,21 @@ pub enum InferiorState {
 }
 
 #[derive(Clone)]
-pub struct Inferior {
+pub struct TrapInferior {
     pub pid: pid_t,
     pub state: InferiorState,
     pub breakpoints: HashMap<InferiorPointer, Breakpoint>,
 }
 
-impl Inferior {
-    pub fn new(pid: pid_t) -> Inferior {
-        Inferior {
+impl TrapInferior {
+    pub fn new(pid: pid_t) -> TrapInferior {
+        TrapInferior {
             pid,
             state: InferiorState::Stopped,
             breakpoints: HashMap::new(),
         }
     }
 }
-
-pub type TrapInferior = Inferior;
 
 #[derive(Copy, Clone, PartialEq, PartialOrd, Debug, Eq, Hash)]
 pub struct InferiorPointer(pub u64);

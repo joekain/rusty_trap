@@ -31,13 +31,13 @@ fn set(inferior: &TrapInferior, bp: &Breakpoint) {
     poke_text(inferior.pid, bp.aligned_address, modified);
 }
 
-fn find_breakpoint_matching_inferior_instruction_pointer(inf: &Inferior) -> Option<&Breakpoint> {
+fn find_breakpoint_matching_inferior_instruction_pointer(inf: &TrapInferior) -> Option<&Breakpoint> {
     let InferiorPointer(ip) = get_instruction_pointer(inf.pid);
     let ip = InferiorPointer(ip - 1);
     return inf.breakpoints.get(&ip);
 }
 
-pub fn handle<F>(inferior: &mut Inferior, callback: &mut F) -> InferiorState
+pub fn handle<F>(inferior: &mut TrapInferior, callback: &mut F) -> InferiorState
 where
     F: FnMut(&TrapInferior, TrapBreakpoint),
 {
