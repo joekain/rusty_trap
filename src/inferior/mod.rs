@@ -16,11 +16,11 @@ pub enum InferiorState {
 }
 
 #[derive(Clone)]
-pub struct TrapInferior {
+pub struct TrapInferior<'a> {
     pub pid: pid_t,
     pub state: InferiorState,
     pub breakpoints: HashMap<InferiorPointer, Breakpoint>,
-    obj: object::File,
+    obj: object::File<'a>,
 }
 
 impl TrapInferior {
