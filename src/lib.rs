@@ -46,23 +46,23 @@ fn exec_inferior(filename: &Path, _args: &[&str]) {
     unreachable!();
 }
 
-fn attach_inferior(raw_pid: pid_t, filename: &Path) -> Result<TrapInferior, Error> {
+fn attach_inferior<'a>(raw_pid: pid_t, data: &'a TrapData) -> Result<TrapInferior<'a>, Error> {
     let nix_pid = Pid::from_raw(raw_pid);
     match waitpid(nix_pid, None) {
-        Ok(WaitStatus::Stopped(pid, signal::Signal::SIGTRAP)) => Ok(TrapInferior::new(pid.into(), filename)),
+        Ok(WaitStatus::Stopped(pid, signal::Signal::SIGTRAP)) => Ok(TrapInferior::new(pid.into(), data)),
         Ok(_) => panic!("Unexpected stop in attach_inferior"),
         Err(e) => Err(e),
     }
 }
 
-pub fn trap_inferior_exec(filename: &Path, args: &[&str]) -> Result<TrapInferior, Error> {
+pub fn trap_inferior_exec<'a>(data: &'a TrapData, args: &[&str]) -> Result<TrapInferior<'a>, Error> {
     loop {
         match unsafe { fork() } {
             Ok(ForkResult::Child) => {
                 exec_inferior(filename, args);
                 unreachable!();
             }
-            Ok(ForkResult::Parent { child: pid }) => return attach_inferior(pid.into(), filename),
+            Ok(ForkResult::Parent { child: pid }) => return attach_inferior(pid.into(), data),
             Err(Error::EAGAIN) => continue,
             Err(e) => return Err(e),
         }
