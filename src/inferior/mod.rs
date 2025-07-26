@@ -8,6 +8,21 @@ use object;
 use std::fs;
 use std::path::Path;
 
+
+pub struct TrapData<'a> {
+    pub filename: &'a Path,
+    pub data: Vec<u8>,
+}
+
+impl <'a> TrapData<'a> {
+    pub fn new(filename: &Path) -> TrapData {
+	TrapData {
+	    filename: filename,
+	    data: fs::read(filename).unwrap()
+	}
+    }
+}
+
 #[derive(Copy, Clone)]
 pub enum InferiorState {
     Running,
@@ -23,14 +38,13 @@ pub struct TrapInferior<'a> {
     obj: object::File<'a>,
 }
 
-impl TrapInferior {
-    pub fn new(pid: pid_t, path: &Path) -> TrapInferior {
-	let data = fs::read(path).unwrap();
+impl <'a> TrapInferior<'a> {
+    pub fn new(pid: pid_t, trap_data: &'a TrapData<'a>) -> TrapInferior<'a> {
         TrapInferior {
             pid,
             state: InferiorState::Stopped,
             breakpoints: HashMap::new(),
-            obj: object::File::parse(&*data).unwrap(),
+            obj: object::File::parse(&*trap_data.data).unwrap(),
         }
     }
 }
