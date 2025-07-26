@@ -1,5 +1,6 @@
 extern crate libc;
 extern crate nix;
+extern crate object;
 
 use libc::pid_t;
 use nix::sys::wait::*;
@@ -45,10 +46,10 @@ fn exec_inferior(filename: &Path, _args: &[&str]) {
     unreachable!();
 }
 
-fn attach_inferior(raw_pid: pid_t) -> Result<TrapInferior, Error> {
+fn attach_inferior(raw_pid: pid_t, filename: &Path) -> Result<TrapInferior, Error> {
     let nix_pid = Pid::from_raw(raw_pid);
     match waitpid(nix_pid, None) {
-        Ok(WaitStatus::Stopped(pid, signal::Signal::SIGTRAP)) => Ok(TrapInferior::new(pid.into())),
+        Ok(WaitStatus::Stopped(pid, signal::Signal::SIGTRAP)) => Ok(TrapInferior::new(pid.into(), filename)),
         Ok(_) => panic!("Unexpected stop in attach_inferior"),
         Err(e) => Err(e),
     }
@@ -61,7 +62,7 @@ pub fn trap_inferior_exec(filename: &Path, args: &[&str]) -> Result<TrapInferior
                 exec_inferior(filename, args);
                 unreachable!();
             }
-            Ok(ForkResult::Parent { child: pid }) => return attach_inferior(pid.into()),
+            Ok(ForkResult::Parent { child: pid }) => return attach_inferior(pid.into(), filename),
             Err(Error::EAGAIN) => continue,
             Err(e) => return Err(e),
         }

@@ -4,6 +4,9 @@ use libc::pid_t;
 use std::collections::HashMap;
 use std::fmt;
 use std::ops::{Add, Sub};
+use object;
+use std::fs;
+use std::path::Path;
 
 #[derive(Copy, Clone)]
 pub enum InferiorState {
@@ -17,14 +20,17 @@ pub struct TrapInferior {
     pub pid: pid_t,
     pub state: InferiorState,
     pub breakpoints: HashMap<InferiorPointer, Breakpoint>,
+    obj: object::File,
 }
 
 impl TrapInferior {
-    pub fn new(pid: pid_t) -> TrapInferior {
+    pub fn new(pid: pid_t, path: &Path) -> TrapInferior {
+	let data = fs::read(path).unwrap();
         TrapInferior {
             pid,
             state: InferiorState::Stopped,
             breakpoints: HashMap::new(),
+            obj: object::File::parse(&*data).unwrap(),
         }
     }
 }
