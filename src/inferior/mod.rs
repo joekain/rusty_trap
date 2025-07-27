@@ -30,7 +30,6 @@ pub enum InferiorState {
     SingleStepping,
 }
 
-#[derive(Clone)]
 pub struct TrapInferior<'a> {
     pub pid: pid_t,
     pub state: InferiorState,

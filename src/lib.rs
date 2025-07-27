@@ -69,7 +69,7 @@ pub fn trap_inferior_exec<'a>(data: &'a TrapData, args: &[&str]) -> Result<TrapI
     }
 }
 
-pub fn trap_inferior_continue<F>(mut inferior: TrapInferior, mut callback: F) -> (TrapInferior, i32)
+pub fn trap_inferior_continue<'a, F>(mut inferior: &'a mut TrapInferior, mut callback: F) -> (&'a TrapInferior<'a>, i32)
 where
     F: FnMut(&TrapInferior, TrapBreakpoint),
 {
