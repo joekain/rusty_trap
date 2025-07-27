@@ -31,7 +31,7 @@ fn set(inferior: &TrapInferior, bp: &Breakpoint) {
     poke_text(inferior.pid, bp.aligned_address, modified);
 }
 
-fn find_breakpoint_matching_inferior_instruction_pointer(inf: &TrapInferior) -> Option<&Breakpoint> {
+fn find_breakpoint_matching_inferior_instruction_pointer<'a>(inf: &'a TrapInferior) -> Option<&'a Breakpoint> {
     let InferiorPointer(ip) = get_instruction_pointer(inf.pid);
     let ip = InferiorPointer(ip - 1);
     return inf.breakpoints.get(&ip);
@@ -92,10 +92,10 @@ fn set_breakpoint_at_address(
     (inferior, InferiorPointer(location))
 }
 
-pub fn trap_inferior_set_breakpoint(
-    mut inferior: TrapInferior,
+pub fn trap_inferior_set_breakpoint<'a>(
+    mut inferior: TrapInferior<'a>,
     location: &str,
-) -> (TrapInferior, TrapBreakpoint) {
+) -> (TrapInferior<'a>, TrapBreakpoint) {
     let address: u64 = 0x55555555b9f4;
     return set_breakpoint_at_address(inferior, address);
 }

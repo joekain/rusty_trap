@@ -59,7 +59,7 @@ pub fn trap_inferior_exec<'a>(data: &'a TrapData, args: &[&str]) -> Result<TrapI
     loop {
         match unsafe { fork() } {
             Ok(ForkResult::Child) => {
-                exec_inferior(filename, args);
+                exec_inferior(data.filename, args);
                 unreachable!();
             }
             Ok(ForkResult::Parent { child: pid }) => return attach_inferior(pid.into(), data),
