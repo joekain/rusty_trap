@@ -34,7 +34,7 @@ pub struct TrapInferior<'a> {
     pub pid: pid_t,
     pub state: InferiorState,
     pub breakpoints: HashMap<InferiorPointer, Breakpoint>,
-    obj: object::File<'a>,
+    pub obj: object::File<'a>,
 }
 
 impl <'a> TrapInferior<'a> {

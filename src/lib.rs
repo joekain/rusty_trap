@@ -1,6 +1,7 @@
 extern crate libc;
 extern crate nix;
 extern crate object;
+extern crate rustc_demangle;
 
 use libc::pid_t;
 use nix::sys::wait::*;

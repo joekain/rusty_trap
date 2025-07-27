@@ -3,6 +3,8 @@ use nix::sys::signal;
 use nix::sys::wait::*;
 use nix::unistd::Pid;
 use ptrace_util::*;
+use object::{Object, ObjectSymbol};
+use rustc_demangle::demangle;
 
 #[derive(Copy, Clone)]
 pub struct Breakpoint {
@@ -96,6 +98,19 @@ pub fn trap_inferior_set_breakpoint<'a>(
     inferior: &'a mut TrapInferior<'a>,
     location: &str,
 ) -> (&'a mut TrapInferior<'a>, TrapBreakpoint) {
-    let address: u64 = 0x55555555b9f4;
+    let mut address: u64 = 0;
+
+    const BASE: u64 = 0x555555554000;
+
+    for symbol in inferior.obj.symbols() {
+	let name = format!("{:#}", demangle(symbol.name().unwrap()));
+	let symbol_address = symbol.address();
+	if name == location {
+	    println!("Found symbol {name} at 0x{symbol_address:x}");
+	    address = symbol_address + BASE;
+	    break;
+	}
+    }
+
     return set_breakpoint_at_address(inferior, address);
 }
