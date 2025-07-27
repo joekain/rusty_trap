@@ -16,7 +16,7 @@ use std::path::Path;
 
 mod ptrace_util;
 
-mod inferior;
+pub mod inferior;
 use inferior::*;
 
 mod breakpoint;
@@ -69,7 +69,7 @@ pub fn trap_inferior_exec<'a>(data: &'a TrapData, args: &[&str]) -> Result<TrapI
     }
 }
 
-pub fn trap_inferior_continue<'a, F>(mut inferior: &'a mut TrapInferior, mut callback: F) -> (&'a TrapInferior<'a>, i32)
+pub fn trap_inferior_continue<'a, F>(inferior: &'a mut TrapInferior, mut callback: F) -> (&'a TrapInferior<'a>, i32)
 where
     F: FnMut(&TrapInferior, TrapBreakpoint),
 {
@@ -79,7 +79,7 @@ where
         inferior.state = match waitpid(Pid::from_raw(inferior.pid), None) {
             Ok(WaitStatus::Exited(_pid, code)) => return (inferior, code),
             Ok(WaitStatus::Stopped(_pid, signal::SIGTRAP)) => {
-                breakpoint::handle(&mut inferior, &mut callback)
+                breakpoint::handle(inferior, &mut callback)
             }
             Ok(WaitStatus::Stopped(_pid, signal)) => {
                 panic!(

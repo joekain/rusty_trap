@@ -69,9 +69,9 @@ where
 }
 
 fn set_breakpoint_at_address<'a>(
-    mut inferior: &'a mut TrapInferior<'a>,
+    inferior: &'a mut TrapInferior<'a>,
     location: u64
-) -> (&'a TrapInferior<'a>, TrapBreakpoint) {
+) -> (&'a mut TrapInferior<'a>, TrapBreakpoint) {
     let aligned_address = location & !0x7u64;
     let target_address = InferiorPointer(location);
     inferior.breakpoints.insert(
@@ -93,9 +93,9 @@ fn set_breakpoint_at_address<'a>(
 }
 
 pub fn trap_inferior_set_breakpoint<'a>(
-    mut inferior: &'a mut TrapInferior<'a>,
+    inferior: &'a mut TrapInferior<'a>,
     location: &str,
-) -> (&'a TrapInferior<'a>, TrapBreakpoint) {
+) -> (&'a mut TrapInferior<'a>, TrapBreakpoint) {
     let address: u64 = 0x55555555b9f4;
     return set_breakpoint_at_address(inferior, address);
 }

@@ -1,13 +1,17 @@
 extern crate rusty_trap;
 use std::path::Path;
 
+use rusty_trap::inferior::TrapData;
+
+
 const ADDRESS_OF_MAIN: u64 = 0x55555555b9f4;
 const ADDRESS_OF_FOO: u64 = 0x55555555b9e0;
 
 #[test]
 fn it_can_exec() {
-    let inferior = rusty_trap::trap_inferior_exec(Path::new("./target/debug/twelve"), &[]).unwrap();
-    let (_inferior, exit_code) = rusty_trap::trap_inferior_continue(inferior, |_, _| {});
+    let data = TrapData::new(Path::new("./target/debug/twelve"));
+    let mut inferior = rusty_trap::trap_inferior_exec(&data, &[]).unwrap();
+    let (_inferior, exit_code) = rusty_trap::trap_inferior_continue(&mut inferior, |_, _| {});
     assert_eq!(12, exit_code);
 }
 
@@ -15,9 +19,10 @@ fn it_can_exec() {
 fn it_can_set_breakpoints() {
     let mut breakpoint_count: i32 = 0;
 
-    let inferior = rusty_trap::trap_inferior_exec(Path::new("./target/debug/twelve"), &[]).unwrap();
+    let data = TrapData::new(Path::new("./target/debug/twelve"));
+    let mut inferior = rusty_trap::trap_inferior_exec(&data, &[]).unwrap();
     let expected_pid = inferior.pid;
-    let (inferior, bp) = rusty_trap::trap_inferior_set_breakpoint(inferior, "twelve::main");
+    let (inferior, bp) = rusty_trap::trap_inferior_set_breakpoint(&mut inferior, "twelve::main");
     let (_, _) = rusty_trap::trap_inferior_continue(inferior, |passed_inferior, passed_bp| {
         assert_eq!(passed_inferior.pid, expected_pid);
         assert_eq!(passed_bp, bp);
@@ -31,9 +36,10 @@ fn it_can_set_breakpoints() {
 fn it_can_handle_a_breakpoint_more_than_once() {
     let mut breakpoint_count: i32 = 0;
 
-    let inferior = rusty_trap::trap_inferior_exec(Path::new("./target/debug/loop"), &[]).unwrap();
+    let data = TrapData::new(Path::new("./target/debug/loop"));
+    let mut inferior = rusty_trap::trap_inferior_exec(&data, &[]).unwrap();
     let expected_pid = inferior.pid;
-    let (inferior, bp) = rusty_trap::trap_inferior_set_breakpoint(inferior, "loop::foo");
+    let (inferior, bp) = rusty_trap::trap_inferior_set_breakpoint(&mut inferior, "loop::foo");
     rusty_trap::trap_inferior_continue(inferior, |passed_inferior, passed_bp| {
         assert_eq!(passed_inferior.pid, expected_pid);
         assert_eq!(passed_bp, bp);
@@ -48,9 +54,10 @@ fn it_can_handle_more_than_one_breakpoint() {
     let mut bp_main_count: i32 = 0;
     let mut bp_foo_count: i32 = 0;
 
-    let inferior = rusty_trap::trap_inferior_exec(Path::new("./target/debug/loop"), &[]).unwrap();
+    let  data = TrapData::new(Path::new("./target/debug/loop"));
+    let mut inferior = rusty_trap::trap_inferior_exec(&data, &[]).unwrap();
     let expected_pid = inferior.pid;
-    let (inferior, bp_main) = rusty_trap::trap_inferior_set_breakpoint(inferior, "loop::main");
+    let (inferior, bp_main) = rusty_trap::trap_inferior_set_breakpoint(&mut inferior, "loop::main");
     let (inferior, bp_foo) = rusty_trap::trap_inferior_set_breakpoint(inferior, "loop::foo");
     let (_, _) = rusty_trap::trap_inferior_continue(inferior, |passed_inferior, passed_bp| {
         assert_eq!(passed_inferior.pid, expected_pid);
