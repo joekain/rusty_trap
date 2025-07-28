@@ -88,10 +88,7 @@ fn set_breakpoint_at_address<'a>(
         },
     );
 
-    set(
-        inferior,
-        inferior.breakpoints.get(&target_address).unwrap(),
-    );
+    set(inferior, inferior.breakpoints.get(&target_address).unwrap());
 
     (inferior, InferiorPointer(location))
 }
