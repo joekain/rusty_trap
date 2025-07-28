@@ -17,7 +17,7 @@ pub struct TrapData<'a> {
 impl<'a> TrapData<'a> {
     pub fn new(filename: &Path) -> TrapData {
         TrapData {
-            filename: filename,
+            filename,
             data: fs::read(filename).unwrap(),
         }
     }
@@ -67,8 +67,7 @@ fn get_base_address(pid: pid_t, filename: &Path) -> u64 {
     }
     // This should be an error, there should be error handling.
     println!("Could not find base address for {expected}");
-    assert!(false);
-    0
+    panic!();
 }
 
 #[derive(Copy, Clone, PartialEq, PartialOrd, Debug, Eq, Hash)]
@@ -109,6 +108,6 @@ impl Sub<i64> for InferiorPointer {
 impl fmt::Display for InferiorPointer {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let &InferiorPointer(u) = self;
-        write!(f, "{}", u)
+        write!(f, "{u}")
     }
 }

@@ -38,7 +38,7 @@ fn find_breakpoint_matching_inferior_instruction_pointer<'a>(
 ) -> Option<&'a Breakpoint> {
     let InferiorPointer(ip) = get_instruction_pointer(inf.pid);
     let ip = InferiorPointer(ip - 1);
-    return inf.breakpoints.get(&ip);
+    inf.breakpoints.get(&ip)
 }
 
 pub fn handle<F>(inferior: &mut TrapInferior, callback: &mut F) -> InferiorState
@@ -54,7 +54,7 @@ where
     }
     callback(inferior, bp.target_address);
     step_over(inferior, bp);
-    return match waitpid(Pid::from_raw(inferior.pid), None) {
+    match waitpid(Pid::from_raw(inferior.pid), None) {
         Ok(WaitStatus::Stopped(_pid, signal::SIGTRAP)) => {
             set(inferior, bp);
             cont(inferior.pid);
@@ -69,7 +69,7 @@ where
         }
         Ok(_) => panic!("Unexpected stop in breakpoint::handle"),
         Err(_) => panic!("Unhandled error in breakpoint::handle"),
-    };
+    }
 }
 
 fn set_breakpoint_at_address<'a>(
@@ -89,7 +89,7 @@ fn set_breakpoint_at_address<'a>(
     );
 
     set(
-        &inferior,
+        inferior,
         inferior.breakpoints.get(&target_address).unwrap(),
     );
 
@@ -112,5 +112,5 @@ pub fn trap_inferior_set_breakpoint<'a>(
         }
     }
 
-    return set_breakpoint_at_address(inferior, address);
+    set_breakpoint_at_address(inferior, address)
 }
