@@ -1,5 +1,7 @@
 extern crate libc;
 extern crate nix;
+extern crate object;
+extern crate rustc_demangle;
 
 use libc::pid_t;
 use nix::sys::wait::*;
@@ -15,7 +17,7 @@ use std::path::Path;
 
 mod ptrace_util;
 
-mod inferior;
+pub mod inferior;
 use inferior::*;
 
 mod breakpoint;
@@ -45,30 +47,38 @@ fn exec_inferior(filename: &Path, _args: &[&str]) {
     unreachable!();
 }
 
-fn attach_inferior(raw_pid: pid_t) -> Result<Inferior, Error> {
+fn attach_inferior<'a>(raw_pid: pid_t, data: &'a TrapData) -> Result<TrapInferior<'a>, Error> {
     let nix_pid = Pid::from_raw(raw_pid);
     match waitpid(nix_pid, None) {
-        Ok(WaitStatus::Stopped(pid, signal::Signal::SIGTRAP)) => Ok(Inferior::new(pid.into())),
+        Ok(WaitStatus::Stopped(pid, signal::Signal::SIGTRAP)) => {
+            Ok(TrapInferior::new(pid.into(), data))
+        }
         Ok(_) => panic!("Unexpected stop in attach_inferior"),
         Err(e) => Err(e),
     }
 }
 
-pub fn trap_inferior_exec(filename: &Path, args: &[&str]) -> Result<Inferior, Error> {
+pub fn trap_inferior_exec<'a>(
+    data: &'a TrapData,
+    args: &[&str],
+) -> Result<TrapInferior<'a>, Error> {
     loop {
         match unsafe { fork() } {
             Ok(ForkResult::Child) => {
-                exec_inferior(filename, args);
+                exec_inferior(data.filename, args);
                 unreachable!();
             }
-            Ok(ForkResult::Parent { child: pid }) => return attach_inferior(pid.into()),
+            Ok(ForkResult::Parent { child: pid }) => return attach_inferior(pid.into(), data),
             Err(Error::EAGAIN) => continue,
             Err(e) => return Err(e),
         }
     }
 }
 
-pub fn trap_inferior_continue<F>(mut inferior: TrapInferior, mut callback: F) -> (TrapInferior, i32)
+pub fn trap_inferior_continue<'a, F>(
+    inferior: &'a mut TrapInferior,
+    mut callback: F,
+) -> (&'a TrapInferior<'a>, i32)
 where
     F: FnMut(&TrapInferior, TrapBreakpoint),
 {
@@ -78,7 +88,7 @@ where
         inferior.state = match waitpid(Pid::from_raw(inferior.pid), None) {
             Ok(WaitStatus::Exited(_pid, code)) => return (inferior, code),
             Ok(WaitStatus::Stopped(_pid, signal::SIGTRAP)) => {
-                breakpoint::handle(&mut inferior, &mut callback)
+                breakpoint::handle(inferior, &mut callback)
             }
             Ok(WaitStatus::Stopped(_pid, signal)) => {
                 panic!(

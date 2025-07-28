@@ -2,7 +2,9 @@ use inferior::*;
 use nix::sys::signal;
 use nix::sys::wait::*;
 use nix::unistd::Pid;
+use object::{Object, ObjectSymbol};
 use ptrace_util::*;
+use rustc_demangle::demangle;
 
 #[derive(Copy, Clone)]
 pub struct Breakpoint {
@@ -31,13 +33,15 @@ fn set(inferior: &TrapInferior, bp: &Breakpoint) {
     poke_text(inferior.pid, bp.aligned_address, modified);
 }
 
-fn find_breakpoint_matching_inferior_instruction_pointer(inf: &Inferior) -> Option<&Breakpoint> {
+fn find_breakpoint_matching_inferior_instruction_pointer<'a>(
+    inf: &'a TrapInferior,
+) -> Option<&'a Breakpoint> {
     let InferiorPointer(ip) = get_instruction_pointer(inf.pid);
     let ip = InferiorPointer(ip - 1);
-    return inf.breakpoints.get(&ip);
+    inf.breakpoints.get(&ip)
 }
 
-pub fn handle<F>(inferior: &mut Inferior, callback: &mut F) -> InferiorState
+pub fn handle<F>(inferior: &mut TrapInferior, callback: &mut F) -> InferiorState
 where
     F: FnMut(&TrapInferior, TrapBreakpoint),
 {
@@ -50,7 +54,7 @@ where
     }
     callback(inferior, bp.target_address);
     step_over(inferior, bp);
-    return match waitpid(Pid::from_raw(inferior.pid), None) {
+    match waitpid(Pid::from_raw(inferior.pid), None) {
         Ok(WaitStatus::Stopped(_pid, signal::SIGTRAP)) => {
             set(inferior, bp);
             cont(inferior.pid);
@@ -65,13 +69,13 @@ where
         }
         Ok(_) => panic!("Unexpected stop in breakpoint::handle"),
         Err(_) => panic!("Unhandled error in breakpoint::handle"),
-    };
+    }
 }
 
-pub fn trap_inferior_set_breakpoint(
-    mut inferior: TrapInferior,
+fn set_breakpoint_at_address<'a>(
+    inferior: &'a mut TrapInferior<'a>,
     location: u64,
-) -> (TrapInferior, TrapBreakpoint) {
+) -> (&'a mut TrapInferior<'a>, TrapBreakpoint) {
     let aligned_address = location & !0x7u64;
     let target_address = InferiorPointer(location);
     inferior.breakpoints.insert(
@@ -84,10 +88,26 @@ pub fn trap_inferior_set_breakpoint(
         },
     );
 
-    set(
-        &inferior,
-        inferior.breakpoints.get(&target_address).unwrap(),
-    );
+    set(inferior, inferior.breakpoints.get(&target_address).unwrap());
 
     (inferior, InferiorPointer(location))
+}
+
+pub fn trap_inferior_set_breakpoint<'a>(
+    inferior: &'a mut TrapInferior<'a>,
+    location: &str,
+) -> (&'a mut TrapInferior<'a>, TrapBreakpoint) {
+    let mut address: u64 = 0;
+
+    for symbol in inferior.obj.symbols() {
+        let name = format!("{:#}", demangle(symbol.name().unwrap()));
+        let symbol_address = symbol.address();
+        if name == location {
+            println!("Found symbol {name} at 0x{symbol_address:x}");
+            address = symbol_address + inferior.base_address;
+            break;
+        }
+    }
+
+    set_breakpoint_at_address(inferior, address)
 }
