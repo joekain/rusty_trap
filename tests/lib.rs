@@ -3,10 +3,6 @@ use std::path::Path;
 
 use rusty_trap::inferior::TrapData;
 
-
-const ADDRESS_OF_MAIN: u64 = 0x55555555b9f4;
-const ADDRESS_OF_FOO: u64 = 0x55555555b9e0;
-
 #[test]
 fn it_can_exec() {
     let data = TrapData::new(Path::new("./target/debug/twelve"));
