@@ -7,6 +7,7 @@ use std::ops::{Add, Sub};
 use object;
 use std::fs;
 use std::path::Path;
+use std::io::{BufRead, BufReader};
 
 
 pub struct TrapData<'a> {
@@ -35,6 +36,7 @@ pub struct TrapInferior<'a> {
     pub state: InferiorState,
     pub breakpoints: HashMap<InferiorPointer, Breakpoint>,
     pub obj: object::File<'a>,
+    pub base_address: u64,
 }
 
 impl <'a> TrapInferior<'a> {
@@ -44,9 +46,32 @@ impl <'a> TrapInferior<'a> {
             state: InferiorState::Stopped,
             breakpoints: HashMap::new(),
             obj: object::File::parse(&*trap_data.data).unwrap(),
+	    base_address: get_base_address(pid, trap_data.filename),
         }
     }
 }
+
+// Helper function to look up the base address by inspected /proc/pid/maps
+fn get_base_address(pid: pid_t, filename: &Path) -> u64 {
+    let proc_filename = format!("/proc/{pid}/maps");
+    let file = fs::File::open(proc_filename).expect("Unable to open file");
+    let expected = fs::canonicalize(filename).unwrap();
+    let expected = expected.to_str().unwrap();
+    let reader = BufReader::new(file);
+    for line in reader.lines() {
+	let line = line.unwrap();
+	if line.contains(expected) {
+	    let addr_str = line.split('-').next().unwrap();
+	    println!("Found base address 0x{addr_str}");
+	    return u64::from_str_radix(addr_str, 16).unwrap();
+	}
+    }
+    // This should be an error, there should be error handling.
+    println!("Could not find base address for {expected}");
+    assert!(false);
+    0
+}
+
 
 #[derive(Copy, Clone, PartialEq, PartialOrd, Debug, Eq, Hash)]
 pub struct InferiorPointer(pub u64);

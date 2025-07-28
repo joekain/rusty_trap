@@ -100,14 +100,12 @@ pub fn trap_inferior_set_breakpoint<'a>(
 ) -> (&'a mut TrapInferior<'a>, TrapBreakpoint) {
     let mut address: u64 = 0;
 
-    const BASE: u64 = 0x555555554000;
-
     for symbol in inferior.obj.symbols() {
 	let name = format!("{:#}", demangle(symbol.name().unwrap()));
 	let symbol_address = symbol.address();
 	if name == location {
 	    println!("Found symbol {name} at 0x{symbol_address:x}");
-	    address = symbol_address + BASE;
+	    address = symbol_address + inferior.base_address;
 	    break;
 	}
     }
