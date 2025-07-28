@@ -50,7 +50,7 @@ fn it_can_handle_more_than_one_breakpoint() {
     let mut bp_main_count: i32 = 0;
     let mut bp_foo_count: i32 = 0;
 
-    let  data = TrapData::new(Path::new("./target/debug/loop"));
+    let data = TrapData::new(Path::new("./target/debug/loop"));
     let mut inferior = rusty_trap::trap_inferior_exec(&data, &[]).unwrap();
     let expected_pid = inferior.pid;
     let (inferior, bp_main) = rusty_trap::trap_inferior_set_breakpoint(&mut inferior, "loop::main");

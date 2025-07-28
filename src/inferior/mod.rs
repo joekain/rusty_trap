@@ -1,26 +1,25 @@
 use breakpoint::Breakpoint;
 use libc::c_void;
 use libc::pid_t;
+use object;
 use std::collections::HashMap;
 use std::fmt;
-use std::ops::{Add, Sub};
-use object;
 use std::fs;
-use std::path::Path;
 use std::io::{BufRead, BufReader};
-
+use std::ops::{Add, Sub};
+use std::path::Path;
 
 pub struct TrapData<'a> {
     pub filename: &'a Path,
     pub data: Vec<u8>,
 }
 
-impl <'a> TrapData<'a> {
+impl<'a> TrapData<'a> {
     pub fn new(filename: &Path) -> TrapData {
-	TrapData {
-	    filename: filename,
-	    data: fs::read(filename).unwrap()
-	}
+        TrapData {
+            filename: filename,
+            data: fs::read(filename).unwrap(),
+        }
     }
 }
 
@@ -39,14 +38,14 @@ pub struct TrapInferior<'a> {
     pub base_address: u64,
 }
 
-impl <'a> TrapInferior<'a> {
+impl<'a> TrapInferior<'a> {
     pub fn new(pid: pid_t, trap_data: &'a TrapData<'a>) -> TrapInferior<'a> {
         TrapInferior {
             pid,
             state: InferiorState::Stopped,
             breakpoints: HashMap::new(),
             obj: object::File::parse(&*trap_data.data).unwrap(),
-	    base_address: get_base_address(pid, trap_data.filename),
+            base_address: get_base_address(pid, trap_data.filename),
         }
     }
 }
@@ -59,19 +58,18 @@ fn get_base_address(pid: pid_t, filename: &Path) -> u64 {
     let expected = expected.to_str().unwrap();
     let reader = BufReader::new(file);
     for line in reader.lines() {
-	let line = line.unwrap();
-	if line.contains(expected) {
-	    let addr_str = line.split('-').next().unwrap();
-	    println!("Found base address 0x{addr_str}");
-	    return u64::from_str_radix(addr_str, 16).unwrap();
-	}
+        let line = line.unwrap();
+        if line.contains(expected) {
+            let addr_str = line.split('-').next().unwrap();
+            println!("Found base address 0x{addr_str}");
+            return u64::from_str_radix(addr_str, 16).unwrap();
+        }
     }
     // This should be an error, there should be error handling.
     println!("Could not find base address for {expected}");
     assert!(false);
     0
 }
-
 
 #[derive(Copy, Clone, PartialEq, PartialOrd, Debug, Eq, Hash)]
 pub struct InferiorPointer(pub u64);

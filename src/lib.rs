@@ -50,13 +50,18 @@ fn exec_inferior(filename: &Path, _args: &[&str]) {
 fn attach_inferior<'a>(raw_pid: pid_t, data: &'a TrapData) -> Result<TrapInferior<'a>, Error> {
     let nix_pid = Pid::from_raw(raw_pid);
     match waitpid(nix_pid, None) {
-        Ok(WaitStatus::Stopped(pid, signal::Signal::SIGTRAP)) => Ok(TrapInferior::new(pid.into(), data)),
+        Ok(WaitStatus::Stopped(pid, signal::Signal::SIGTRAP)) => {
+            Ok(TrapInferior::new(pid.into(), data))
+        }
         Ok(_) => panic!("Unexpected stop in attach_inferior"),
         Err(e) => Err(e),
     }
 }
 
-pub fn trap_inferior_exec<'a>(data: &'a TrapData, args: &[&str]) -> Result<TrapInferior<'a>, Error> {
+pub fn trap_inferior_exec<'a>(
+    data: &'a TrapData,
+    args: &[&str],
+) -> Result<TrapInferior<'a>, Error> {
     loop {
         match unsafe { fork() } {
             Ok(ForkResult::Child) => {
@@ -70,7 +75,10 @@ pub fn trap_inferior_exec<'a>(data: &'a TrapData, args: &[&str]) -> Result<TrapI
     }
 }
 
-pub fn trap_inferior_continue<'a, F>(inferior: &'a mut TrapInferior, mut callback: F) -> (&'a TrapInferior<'a>, i32)
+pub fn trap_inferior_continue<'a, F>(
+    inferior: &'a mut TrapInferior,
+    mut callback: F,
+) -> (&'a TrapInferior<'a>, i32)
 where
     F: FnMut(&TrapInferior, TrapBreakpoint),
 {
